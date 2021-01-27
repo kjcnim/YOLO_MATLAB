@@ -17,10 +17,16 @@ vehicleDataset(1:4,:)
 vehicleDataset.imageFilename = fullfile(pwd,vehicleDataset.imageFilename);
 
 rng(0);
+% shuffledIndices이 과정을 하는게 무슨 의미가 있나?
 shuffledIndices = randperm(height(vehicleDataset));
+
+%length(shuffledIndices) = 295
+%idx = 177
 idx = floor(0.6 * length(shuffledIndices) );
 
+%trainingIdx = 1부터 차례로 177까지 행렬
 trainingIdx = 1:idx;
+%177개의 데이터(사진)과 그 값들을 불러옴. 이것이 훈련 세트
 trainingDataTbl = vehicleDataset(shuffledIndices(trainingIdx),:);
 
 validationIdx = idx+1 : idx + 1 + floor(0.1 * length(shuffledIndices) );
