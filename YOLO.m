@@ -74,12 +74,38 @@ figure
 imshow(annotatedImage)
 
 %% YOLO v2 객체 검출 신경망 만들기
+
+% 예제를 실행하는데 소요되는 계산 비용을 줄이기 위해
+% 신경망을 실행하는데 필요한 최소 크기인 [224 224 3]으로 신경망 입력 크기를 지정한다.
+% 훈련 전 전처리 단계에서 영상의 크기를 조정하는 것이다.
 inputSize = [224 224 3];
+
+% 검출할 사물 클래스의 개수를 정의한다.
 numClasses = width(vehicleDataset)-1;
+
+% estimateAnchorBoxes를 사용하여 훈련 데이터의 사물 크기를 기반으로
+% 앵커 상자를 추정한다.
+% 훈련 전 이루어지는 영상 크기 조정을 고려하기 위해 앵커 상자 추정에 사용하는 훈련 데이터의 크기를 조정한다.
+% transform을 사용하여 훈련 데이터를 전처리한 후에 앵커 상자의 개수를 정의하고 앵커 상자를 추정한다.
+% preprocessData를 사용하여 훈련 데이터를 신경망의 입력 영상 크기로 크기 조정한다.
 trainingDataForEstimation = transform(trainingData,@(data)preprocessData(data,inputSize));
 numAnchors = 7;
 [anchorBoxes, meanIoU] = estimateAnchorBoxes(trainingDataForEstimation, numAnchors)
 
+% 이제 resnet50을 사용하여 사전 훈련된 ResNet-50 모델을 불러온다.
 featureExtractionNetwork = resnet50;
+
+% activation_40_relu 뒤에 오는 layer들을 검출 하위 신경망으로 교체할 특징 추출 layer로 
+% activation_40_relu를 선택한다.
+% 이 정도의 다운샘플링은 공간 분해능과 추출된 특징의 강도 사이를 적절히 절충한 값이다.
+% 신경망의 더 아래쪽에서 추출된 특징은 더 강한 영상 특징을 인코딩하나 공간 분해능이 줄어들기 때문이다.
+% 최적의 특징 추출 계층을 선택하려면 경험적 분석이 필요하다.
 featureLayer = 'activation_40_relu';
+
+% YOLO v2 객체 검출 신경망을 만든다.
 lgraph = yolov2Layers(inputSize,numClasses,anchorBoxes,featureExtractionNetwork,featureLayer);
+
+%% 데이터 증대
+
+augmentedTrainingData = transform(trainingData,@augmentData);
+
