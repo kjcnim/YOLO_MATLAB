@@ -109,3 +109,69 @@ lgraph = yolov2Layers(inputSize,numClasses,anchorBoxes,featureExtractionNetwork,
 
 augmentedTrainingData = transform(trainingData,@augmentData);
 
+% Visualize the augmented images.
+augmentedData = cell(4,1);
+for k = 1:4
+    data = read(augmentedTrainingData);
+    augmentedData{k} = insertShape(data{1},'Rectangle',data{2});
+    reset(augmentedTrainingData);
+end
+figure
+montage(augmentedData,'BorderSize',10)
+
+%% 훈련 데이터 전처리하기
+
+preprocessedTrainingData = transform(augmentedTrainingData,@(data)preprocessData(data,inputSize));
+preprocessedValidationData = transform(validationData,@(data)preprocessData(data,inputSize));
+
+data = read(preprocessedTrainingData);
+
+I = data{1};
+bbox = data{2};
+annotatedImage = insertShape(I,'Rectangle',bbox);
+annotatedImage = imresize(annotatedImage,2);
+figure
+imshow(annotatedImage)
+
+%% YOLO v2 사물 검출기 훈련시키기
+options = trainingOptions('sgdm', ...
+        'MiniBatchSize',16, ....
+        'InitialLearnRate',1e-3, ...
+        'MaxEpochs',20,...
+        'CheckpointPath',tempdir, ...
+        'ValidationData',preprocessedValidationData);
+    
+if doTraining       
+    % Train the YOLO v2 detector.
+    [detector,info] = trainYOLOv2ObjectDetector(preprocessedTrainingData,lgraph,options)
+else
+    % Load pretrained detector for the example.
+    pretrained = load('yolov2ResNet50VehicleExample_19b.mat');
+    detector = pretrained.detector;
+end
+
+I = imread(testDataTbl.imageFilename{1});
+I = imresize(I,inputSize(1:2));
+
+[bboxes,scores]  = detect(detector, I);
+
+I = insertObjectAnnotation(I,'rectangle',bboxes,scores);
+figure
+imshow(I)
+
+%% 테스트 세트를 사용하여 검출기 평가하기
+preprocessedTestData = transform(testData,@(data)preprocessData(data,inputSize));
+detectionResults = detect(detector, preprocessedTestData);
+[ap,recall,precision] = evaluateDetectionPrecision(detectionResults, preprocessedTestData);
+
+figure
+plot(recall,precision)
+xlabel('Recall')
+ylabel('Precision')
+grid on
+title(sprintf('Average Precision = %.2f',ap))
+
+
+
+
+
