@@ -150,7 +150,7 @@ else
     detector = pretrained.detector;
 end
 
-I = imread(testDataTbl.imageFilename{1});
+I = imread(testDataTbl.imageFilename{2});
 I = imresize(I,inputSize(1:2));
 
 [bboxes,scores]  = detect(detector, I);
